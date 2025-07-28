@@ -155,4 +155,44 @@ class SocketClient {
       if (kDebugMode) print('[Socket] Cannot restart heartbeat: socket not connected');
     }
   }
+
+
+
+  // --- Signaling Methods ---
+  void sendOffer({required int toUserId, required Map<String, dynamic> payload}) {
+    _socket?.emit('offer', {'toUserId': toUserId, 'payload': payload});
+  }
+
+  void sendAnswer({required int toUserId, required Map<String, dynamic> payload}) {
+    _socket?.emit('answer', {'toUserId': toUserId, 'payload': payload});
+  }
+
+  void sendCandidate({required int toUserId, required Map<String, dynamic> payload}) {
+    _socket?.emit('candidate', {'toUserId': toUserId, 'payload': payload});
+  }
+
+  // Listen for signaling events
+  void onOffer(void Function(int fromUserId, Map<String, dynamic> payload) callback) {
+    _socket?.on('getOffer', (data) {
+      if (data is Map && data['fromUserId'] != null && data['payload'] != null) {
+        callback(data['fromUserId'], Map<String, dynamic>.from(data['payload']));
+      }
+    });
+  }
+
+  void onAnswer(void Function(int fromUserId, Map<String, dynamic> payload) callback) {
+    _socket?.on('getAnswer', (data) {
+      if (data is Map && data['fromUserId'] != null && data['payload'] != null) {
+        callback(data['fromUserId'], Map<String, dynamic>.from(data['payload']));
+      }
+    });
+  }
+
+  void onCandidate(void Function(int fromUserId, Map<String, dynamic> payload) callback) {
+    _socket?.on('getCandidate', (data) {
+      if (data is Map && data['fromUserId'] != null && data['payload'] != null) {
+        callback(data['fromUserId'], Map<String, dynamic>.from(data['payload']));
+      }
+    });
+  }
 }

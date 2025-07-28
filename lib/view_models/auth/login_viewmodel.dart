@@ -1,13 +1,17 @@
 // lib/view_models/auth/auth_viewmodel.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../repositories/auth_repository.dart';
+import '../../repositories/user_repository.dart';
 import '../../shared/failure.dart';
 import '../../shared/exceptions.dart';
 import '../../services/locator.dart';
 import '../../shared/enums.dart';
+import '../user_provider.dart';
 class AuthViewModel extends ChangeNotifier {
   final AuthRepository _authRepository = sl<AuthRepository>();
+  final UserRepository _userRepository = sl<UserRepository>();
   ViewState _state = ViewState.Idle;
   ViewState get state => _state;
 
@@ -24,13 +28,17 @@ class AuthViewModel extends ChangeNotifier {
     _setState(ViewState.Error);
   }
 
-  Future<void> login(String username, String password) async {
+  Future<void> login(String username, String password, BuildContext context) async {
     _setState(ViewState.Busy);
     _failure = null;
 
     try {
-      // 2. REPLACE THE FAKE DELAY WITH THE REAL REPOSITORY CALL
+      // Login first
       await _authRepository.login(username, password);
+      
+      // Then fetch user data and set it in the provider
+      final user = await _userRepository.getMe();
+      Provider.of<UserProvider>(context, listen: false).setUser(user);
 
       _setState(ViewState.Success);
     } on AppException catch (e) { // 3. CATCH OUR SPECIFIC APP EXCEPTIONS

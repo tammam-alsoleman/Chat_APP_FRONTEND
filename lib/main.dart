@@ -8,10 +8,12 @@ import 'repositories/messaging_repository.dart';
 import 'repositories/user_repository.dart';
 import 'services/socket_client.dart';
 import 'views/auth/login_screen.dart';
-import 'views/chat/chat_list_screen.dart';
+import 'views/main_navigation_screen.dart';
 import 'core/config.dart';
 import 'shared/theme.dart';
 import 'view_models/user_provider.dart';
+import 'view_models/call/call_viewmodel.dart';
+import 'shared/widgets/incoming_call_overlay.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +24,9 @@ Future<void> main() async {
   AppConfig.instance.setup(env: Environment.development);
   runApp(const MyApp());
 }
+// Global navigator key for accessing context from anywhere
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
@@ -33,12 +38,46 @@ class MyApp extends StatelessWidget {
         Provider<AuthRepository>(create: (_) => AuthRepository()),
         Provider<MessagingRepository>(create: (_) => MessagingRepository()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        // Provide the singleton CallViewModel globally
+        ChangeNotifierProvider.value(value: sl<CallViewModel>()),
       ],
       child: MaterialApp(
         title: 'Chat App',
         theme: AppTheme.lightTheme,
         debugShowCheckedModeBanner: false,
+        navigatorKey: navigatorKey,
         home: const AuthWrapper(),
+        // Add builder to ensure overlays work globally
+        builder: (context, child) {
+          return Stack(
+            children: [
+              child!,
+              // Global incoming call overlay will be shown here when needed
+              Consumer<CallViewModel>(
+                builder: (context, callViewModel, child) {
+                  debugPrint('[Main] 🔍 Checking incoming call overlay. isIncomingCall: ${callViewModel.isIncomingCall}, caller: ${callViewModel.incomingCallFrom?.displayName}');
+                  
+                  if (callViewModel.isIncomingCall && callViewModel.incomingCallFrom != null) {
+                    debugPrint('[Main] 🎯 SHOWING incoming call overlay for ${callViewModel.incomingCallFrom!.displayName}');
+                    return IncomingCallOverlay(
+                      caller: callViewModel.incomingCallFrom!,
+                      isVideoCall: callViewModel.incomingCallPayload?['callType'] == 'video',
+                      onAccept: () {
+                        debugPrint('[Main] ✅ Accept button pressed');
+                        callViewModel.acceptIncomingCall();
+                      },
+                      onDecline: () {
+                        debugPrint('[Main] ❌ Decline button pressed');
+                        callViewModel.declineIncomingCall();
+                      },
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -89,20 +128,36 @@ class _AuthenticatedAppLoaderState extends State<AuthenticatedAppLoader> {
 
   Future<void> _initialize() async {
     try {
+      debugPrint('[AuthenticatedAppLoader] Starting initialization...');
       await sl<SocketClient>().connectAndListen();
+      debugPrint('[AuthenticatedAppLoader] Socket connected');
+      
       final user = await sl<UserRepository>().getMe();
+      debugPrint('[AuthenticatedAppLoader] User fetched: ${user.displayName}');
+      
       sl<SocketClient>().registerPresence(user);
+      debugPrint('[AuthenticatedAppLoader] Presence registered');
 
       // Check if widget is still mounted before using context
       if (!mounted) return;
 
       // Set the user in the provider
       Provider.of<UserProvider>(context, listen: false).setUser(user);
+      debugPrint('[AuthenticatedAppLoader] User set in provider');
 
+      // Initialize CallViewModel to start listening for incoming calls
+      debugPrint('[AuthenticatedAppLoader] Initializing CallViewModel for incoming calls');
+      final callViewModel = sl<CallViewModel>();
+      if (!callViewModel.isInitialized) {
+        await callViewModel.initialize(user);
+      }
+
+      debugPrint('[AuthenticatedAppLoader] Navigating to MainNavigationScreen');
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const ChatListScreen()),
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
       );
     } catch (e) {
+      debugPrint('[AuthenticatedAppLoader] Error during initialization: $e');
       // If something fails (e.g., token expired), log out and go to login
       await sl<AuthRepository>().logout();
       

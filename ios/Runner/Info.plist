@@ -45,5 +45,22 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- Camera and Microphone permissions for WebRTC calls -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to make video calls</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs microphone access to make voice and video calls</string>
+	
+	<!-- Background audio for calls -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>voip</string>
+	</array>
+	
+	<!-- Prevent screen lock during calls -->
+	<key>UIRequiresPersistentWiFi</key>
+	<true/>
 </dict>
 </plist>

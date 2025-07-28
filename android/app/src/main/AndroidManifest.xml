@@ -1,4 +1,26 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Camera and Microphone permissions for WebRTC calls -->
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-feature android:name="android.hardware.camera.autofocus" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    
+    <!-- Internet and Network permissions for WebRTC and Socket.IO -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    
+    <!-- Vibration permission for incoming call notifications -->
+    <!-- <uses-permission android:name="android.permission.VIBRATE" /> -->
+    
+    <!-- Wake lock permission to keep screen on during calls -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    
+    <!-- Foreground service permission for call notifications -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    
     <application
         android:label="front"
         android:name="${applicationName}"

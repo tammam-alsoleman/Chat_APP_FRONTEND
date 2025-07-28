@@ -8,7 +8,7 @@ import '../../shared/utils.dart';
 import '../../shared/widgets/custom_button.dart';
 import '../../shared/widgets/custom_text_field.dart';
 import '../../view_models/auth/login_viewmodel.dart';
-import '../chat/chat_list_screen.dart';
+import '../main_navigation_screen.dart';
 
 class LoginScreen extends StatelessWidget { // <-- 2. CAN BE A StatelessWidget
   const LoginScreen({Key? key}) : super(key: key);
@@ -56,7 +56,7 @@ class _LoginFormState extends State<_LoginForm> {
         AppUtils.showSnackBar(context, viewModel.failure!.message, isError: true);
       } else if (viewModel.state == ViewState.Success) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const ChatListScreen()),
+          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
               (route) => false,
         );
       }
@@ -115,6 +115,7 @@ class _LoginFormState extends State<_LoginForm> {
                         viewModel.login(
                           _usernameController.text,
                           _passwordController.text,
+                          context,
                         );
                       }
                     },

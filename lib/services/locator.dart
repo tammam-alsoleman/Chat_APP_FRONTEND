@@ -7,6 +7,10 @@ import '../services/secure_storage_service.dart';
 import '../services/socket_client.dart';
 import '../view_models/auth/login_viewmodel.dart';
 import '../view_models/chat/chat_list_viewmodel.dart';
+import '../view_models/call/call_viewmodel.dart';
+import '../repositories/presence_repository.dart';
+import '../repositories/call_repository.dart';
+import 'permission_service.dart';
 
 // Create a global instance of GetIt
 final sl = GetIt.instance;
@@ -23,8 +27,22 @@ void setupServiceLocator() {
   sl.registerLazySingleton(() => AuthRepository());
   sl.registerLazySingleton(() => MessagingRepository());
   sl.registerLazySingleton(() => UserRepository());
-  // --- VIEW MODELS (Factories) ---
-  // We need a new instance of a ViewModel every time we create a screen.
+  sl.registerLazySingleton(() => PresenceRepository());
+  sl.registerLazySingleton(() => CallRepository());
+  
+  // --- SERVICES ---
+  sl.registerLazySingleton(() => PermissionService());
+  
+  // --- VIEW MODELS ---
+  // Auth and Chat ViewModels are factories (new instance per screen)
   sl.registerFactory(() => AuthViewModel());
   sl.registerFactory(() => ChatListViewModel());
+  
+  // CallViewModel is a singleton (one instance for entire app lifecycle)
+  sl.registerLazySingleton(() => CallViewModel(
+    presenceRepository: sl<PresenceRepository>(),
+    callRepository: sl<CallRepository>(),
+    userRepository: sl<UserRepository>(),
+    socketClient: sl<SocketClient>(),
+  ));
 }
