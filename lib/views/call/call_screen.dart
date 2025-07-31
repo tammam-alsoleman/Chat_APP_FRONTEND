@@ -16,13 +16,28 @@ class CallScreen extends StatefulWidget {
   State<CallScreen> createState() => _CallScreenState();
 }
 
-class _CallScreenState extends State<CallScreen> {
+class _CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
   late CallViewModel _callViewModel;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _callViewModel = sl<CallViewModel>();
+    
+    // Refresh online users when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _callViewModel.refreshOnlineUsers();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Refresh online users when app becomes visible
+    if (state == AppLifecycleState.resumed) {
+      _callViewModel.refreshOnlineUsers();
+    }
   }
 
   @override
@@ -180,7 +195,7 @@ class _CallScreenState extends State<CallScreen> {
 
   @override
   void dispose() {
-    // Don't dispose the singleton CallViewModel
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 } 

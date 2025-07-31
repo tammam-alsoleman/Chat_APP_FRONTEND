@@ -6,6 +6,7 @@ import '../services/dio_client.dart';
 import '../services/secure_storage_service.dart';
 import '../services/socket_client.dart';
 import '../view_models/auth/login_viewmodel.dart';
+import '../view_models/auth/sign_up_viewmodel.dart';
 import '../view_models/chat/chat_list_viewmodel.dart';
 import '../view_models/call/call_viewmodel.dart';
 import '../repositories/presence_repository.dart';
@@ -36,6 +37,7 @@ void setupServiceLocator() {
   // --- VIEW MODELS ---
   // Auth and Chat ViewModels are factories (new instance per screen)
   sl.registerFactory(() => AuthViewModel());
+  sl.registerFactory(() => SignUpViewModel());
   sl.registerFactory(() => ChatListViewModel());
   
   // CallViewModel is a singleton (one instance for entire app lifecycle)

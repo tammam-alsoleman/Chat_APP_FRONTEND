@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../view_models/user_provider.dart';
+import '../models/user_model.dart';
 import 'chat/chat_list_screen.dart';
 import 'call/call_screen.dart';
 
@@ -13,8 +14,8 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
-
-  final List<Widget> _screens = [];
+  List<Widget> _screens = [];
+  User? _currentUser;
 
   @override
   void initState() {
@@ -31,18 +32,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     
     debugPrint('[MainNavigationScreen] Initializing screens. Current user: ${currentUser?.displayName}');
     
-    if (currentUser != null && _screens.isEmpty) {
+    // Check if user has changed
+    if (currentUser != null && currentUser != _currentUser) {
+      _currentUser = currentUser;
       setState(() {
-        _screens.addAll([
+        _screens = [
           const ChatListScreen(),
-          const CallScreen(), // Remove currentUser parameter since CallViewModel is singleton
-        ]);
+          const CallScreen(),
+        ];
       });
-      debugPrint('[MainNavigationScreen] Screens initialized. Count: ${_screens.length}');
+      debugPrint('[MainNavigationScreen] Screens re-initialized for new user: ${currentUser.displayName}');
     } else if (currentUser == null) {
       debugPrint('[MainNavigationScreen] No current user available');
     } else {
-      debugPrint('[MainNavigationScreen] Screens already initialized');
+      debugPrint('[MainNavigationScreen] User unchanged, keeping existing screens');
     }
   }
 
@@ -61,12 +64,19 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           );
         }
 
-        // Initialize screens if not already done (only if _screens is empty)
-        if (_screens.isEmpty && currentUser != null) {
-          debugPrint('[MainNavigationScreen] Screens empty, initializing');
+        // Re-initialize screens if user has changed
+        if (currentUser != _currentUser) {
+          debugPrint('[MainNavigationScreen] User changed, re-initializing screens');
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _initializeScreens();
           });
+        }
+
+        // Show loading if screens are not ready
+        if (_screens.isEmpty) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
         return Scaffold(

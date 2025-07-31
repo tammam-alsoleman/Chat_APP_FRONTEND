@@ -34,7 +34,7 @@ class AppConfig {
     switch (env) {
       case Environment.development:
       // For the Android Emulator, 10.0.2.2 points to the host machine's localhost.
-        baseUrl = 'http://192.168.13.111:5000';
+        baseUrl = 'http://192.168.97.87:5000';
         break;
       case Environment.production:
       // IMPORTANT: Replace this with your actual public domain when you go live.

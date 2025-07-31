@@ -1,63 +1,65 @@
-// lib/views/auth/login_screen.dart
+// lib/views/auth/sign_up_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../services/locator.dart'; // <-- 1. IMPORT get_it LOCATOR
+import '../../services/locator.dart';
 import '../../shared/enums.dart';
 import '../../shared/utils.dart';
 import '../../shared/widgets/custom_button.dart';
 import '../../shared/widgets/custom_text_field.dart';
-import '../../view_models/auth/login_viewmodel.dart';
+import '../../view_models/auth/sign_up_viewmodel.dart';
 import '../main_navigation_screen.dart';
-import 'sign_up_screen.dart';
-class LoginScreen extends StatelessWidget { // <-- 2. CAN BE A StatelessWidget
-  const LoginScreen({Key? key}) : super(key: key);
+
+class SignUpScreen extends StatelessWidget {
+  const SignUpScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // We get a fresh instance of AuthViewModel from our service locator
     return ChangeNotifierProvider(
-      create: (_) => sl<AuthViewModel>(), // <-- 3. USE sl<AuthViewModel>()
+      create: (_) => sl<SignUpViewModel>(),
       child: Scaffold(
-        appBar: AppBar(title: const Text('Login')),
-        body: const _LoginForm(),
+        appBar: AppBar(title: const Text('Sign Up')),
+        body: const _SignUpForm(),
       ),
     );
   }
 }
 
-/// A private StatefulWidget to manage the form's state (controllers, form key).
-class _LoginForm extends StatefulWidget {
-  const _LoginForm({Key? key}) : super(key: key);
+class _SignUpForm extends StatefulWidget {
+  const _SignUpForm({Key? key}) : super(key: key);
 
   @override
-  _LoginFormState createState() => _LoginFormState();
+  _SignUpFormState createState() => _SignUpFormState();
 }
 
-class _LoginFormState extends State<_LoginForm> {
-  final _usernameController = TextEditingController();
+class _SignUpFormState extends State<_SignUpForm> {
+  final _userNameController = TextEditingController();
+  final _displayNameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _userNameController.dispose();
+    _displayNameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  // This helper function remains the same, it's an excellent pattern.
-  void _handleStateChanges(BuildContext context, AuthViewModel viewModel) {
+  void _handleStateChanges(BuildContext context, SignUpViewModel viewModel) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Check if the widget is still in the tree before showing UI
       if (!mounted) return;
 
       if (viewModel.state == ViewState.Error && viewModel.failure != null) {
         AppUtils.showSnackBar(context, viewModel.failure!.message, isError: true);
+        // Clear input fields on error
+        _userNameController.clear();
+        _displayNameController.clear();
+        _passwordController.clear();
       } else if (viewModel.state == ViewState.Success) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-              (route) => false,
+          (route) => false,
         );
       }
     });
@@ -65,7 +67,7 @@ class _LoginFormState extends State<_LoginForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthViewModel>(
+    return Consumer<SignUpViewModel>(
       builder: (context, viewModel, child) {
         _handleStateChanges(context, viewModel);
 
@@ -78,16 +80,32 @@ class _LoginFormState extends State<_LoginForm> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.chat_bubble_outline, size: 80, color: Colors.blue),
+                  const Icon(Icons.person_add_alt_1_outlined, size: 80, color: Colors.blue),
                   const SizedBox(height: 32),
                   CustomTextField(
-                    controller: _usernameController,
+                    controller: _userNameController,
                     labelText: 'Username',
                     prefixIcon: Icons.person_outline,
                     isEnabled: viewModel.state != ViewState.Busy,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter your username';
+                      }
+                      if (value.trim().length < 3) {
+                        return 'Username must be at least 3 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    controller: _displayNameController,
+                    labelText: 'Display Name',
+                    prefixIcon: Icons.badge_outlined,
+                    isEnabled: viewModel.state != ViewState.Busy,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter your display name';
                       }
                       return null;
                     },
@@ -108,26 +126,18 @@ class _LoginFormState extends State<_LoginForm> {
                   ),
                   const SizedBox(height: 32),
                   CustomButton(
-                    text: 'Login',
+                    text: 'Sign Up',
                     isLoading: viewModel.state == ViewState.Busy,
                     onPressed: () {
                       if (_formKey.currentState?.validate() ?? false) {
-                        viewModel.login(
-                          _usernameController.text,
+                        viewModel.signUp(
+                          _userNameController.text,
                           _passwordController.text,
+                          _displayNameController.text,
                           context,
                         );
                       }
                     },
-                  ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: viewModel.state == ViewState.Busy ? null : () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const SignUpScreen()),
-                      );
-                    },
-                    child: const Text("Don't have an account? Sign Up"),
                   ),
                 ],
               ),

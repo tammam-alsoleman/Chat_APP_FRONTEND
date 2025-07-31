@@ -105,6 +105,44 @@ class CallViewModel extends ChangeNotifier {
     }
   }
 
+  // Method to re-initialize for new user (after sign-up)
+  Future<void> reinitialize(User currentUser) async {
+    try {
+      debugPrint('[CallViewModel] Re-initializing for new user: ${currentUser.displayName}');
+      
+      // Clear existing state
+      _onlineUsers.clear();
+      _searchResults.clear();
+      _callList.clear();
+      _searchQuery = '';
+      _isSearching = false;
+      _isIncomingCall = false;
+      _incomingCallFrom = null;
+      _incomingCallPayload = null;
+      _isInCall = false;
+      _currentCallPartner = null;
+      _callStatusMessage = null;
+      
+      // Re-register presence for new user
+      _presenceRepository.registerPresence(currentUser);
+      debugPrint('[CallViewModel] Presence re-registered for new user');
+
+      // Wait a bit for presence to be processed
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Get initial online users for new user
+      await _fetchInitialOnlineUsers();
+
+      // Re-initialize WebRTC service for new user
+      _initializeWebRTCService(currentUser);
+
+      debugPrint('[CallViewModel] Re-initialization completed successfully');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('[CallViewModel] Re-initialization error: $e');
+    }
+  }
+
   void _initializeWebRTCService(User currentUser) {
     try {
       debugPrint('[CallViewModel] Initializing WebRTC service for user: ${currentUser.userId}');
