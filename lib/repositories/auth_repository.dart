@@ -5,14 +5,17 @@ import 'package:dio/dio.dart';
 import '../core/constants.dart';
 import '../services/dio_client.dart';
 import '../services/secure_storage_service.dart';
-import '../services/socket_client.dart'; // <-- 1. IMPORT SOCKET CLIENT
+import '../services/socket_client.dart';
 import '../shared/exceptions.dart';
-import '../services/locator.dart'; // <-- 2. IMPORT THE SERVICE LOCATOR
+import '../services/locator.dart';
 import '../services/password_service.dart';
 import 'user_repository.dart';
+import 'package:provider/provider.dart';
+import '../view_models/call/call_viewmodel.dart';
+import '../view_models/user_provider.dart';
+import 'package:flutter/material.dart';
 
 class AuthRepository {
-  // 3. GET DEPENDENCIES FROM THE SERVICE LOCATOR INSTEAD OF DIRECTLY
   final Dio _dio = sl<DioClient>().dio;
   final SecureStorageService _storageService = sl<SecureStorageService>();
   final SocketClient _socketClient = sl<SocketClient>();
@@ -89,8 +92,7 @@ class AuthRepository {
     if (e.response != null) {
       final statusCode = e.response!.statusCode;
       final errorMessage = e.response!.data['error'] ?? 'An error occurred.';
-      if (statusCode == 401 || statusCode == 404 || statusCode == 409) {
-        // Return the exception
+      if (statusCode == 400 || statusCode == 401 || statusCode == 404 || statusCode == 409) {
         return AuthException(errorMessage);
       }
     }
@@ -99,9 +101,11 @@ class AuthRepository {
     return ServerException('An unexpected server error occurred.');
   }
 
-  Future<void> logout() async {
+  Future<void> logout(BuildContext context) async {
+    sl<CallViewModel>().reset();
+    Provider.of<UserProvider>(context, listen: false).clearUser();
     // 5. DISCONNECT THE SOCKET ON LOGOUT
-    _socketClient.disconnect();
+    sl<SocketClient>().disconnect();
     await _storageService.deleteToken();
     await _storageService.deletePrivateKey();
   }

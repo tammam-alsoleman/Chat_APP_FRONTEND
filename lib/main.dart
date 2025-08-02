@@ -1,5 +1,6 @@
 // lib/main.dart
 
+import 'package:chat_app_frontend/repositories/group_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/locator.dart';
@@ -138,6 +139,9 @@ class _AuthenticatedAppLoaderState extends State<AuthenticatedAppLoader> {
       sl<SocketClient>().registerPresence(user);
       debugPrint('[AuthenticatedAppLoader] Presence registered');
 
+      sl<GroupRepository>().listenForGroupKeys();
+      debugPrint('[AuthenticatedAppLoader] Started listening for group keys.');
+
       // Check if widget is still mounted before using context
       if (!mounted) return;
 
@@ -159,7 +163,7 @@ class _AuthenticatedAppLoaderState extends State<AuthenticatedAppLoader> {
     } catch (e) {
       debugPrint('[AuthenticatedAppLoader] Error during initialization: $e');
       // If something fails (e.g., token expired), log out and go to login
-      await sl<AuthRepository>().logout();
+      await sl<AuthRepository>().logout(context);
       
       // Check if widget is still mounted before using context
       if (!mounted) return;

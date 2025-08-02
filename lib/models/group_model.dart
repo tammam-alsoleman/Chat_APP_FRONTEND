@@ -14,7 +14,7 @@ class Group {
   /// A factory constructor for creating a new Group instance from a map.
   factory Group.fromJson(Map<String, dynamic> json) {
     return Group(
-      groupId: json['group_id'],
+      groupId: int.parse(json['group_id'].toString()),
       groupName: json['group_name'],
       createdAt: DateTime.parse(json['created_at']),
     );
