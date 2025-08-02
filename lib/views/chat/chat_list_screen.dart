@@ -12,6 +12,7 @@ import '../../view_models/chat/chat_list_viewmodel.dart';
 import '../../view_models/user_provider.dart';
 import 'chat_screen.dart';
 import '../auth/login_screen.dart';
+import 'new_chat_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({Key? key}) : super(key: key);
@@ -55,7 +56,7 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
 
   Future<void> _logout(BuildContext context) async {
     // Get the AuthRepository from our service locator to perform the logout.
-    await sl<AuthRepository>().logout();
+    await sl<AuthRepository>().logout(context);
 
     // Check if widget is still mounted before using context
     if (!mounted) return;
@@ -112,18 +113,22 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
               itemCount: _viewModel.chats.length,
               itemBuilder: (context, index) {
                 final chat = _viewModel.chats[index];
-                return _ChatListItem(chat: chat);
+                return _ChatListItem(chat: chat, viewModel: _viewModel);
               },
             ),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Navigate to a "New Chat" screen
+        onPressed: () async {
+          // Navigate to our new screen
+          await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const NewChatScreen()),
+          );
+          _viewModel.fetchChats();
         },
         tooltip: 'New Chat',
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add_comment_outlined),
       ),
     );
   }
@@ -132,7 +137,12 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
 /// The private widget for a single item in the list remains the same.
 class _ChatListItem extends StatelessWidget {
   final Group chat;
-  const _ChatListItem({Key? key, required this.chat}) : super(key: key);
+  final ChatListViewModel viewModel;
+  const _ChatListItem({
+    Key? key,
+    required this.chat,
+    required this.viewModel,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -143,14 +153,15 @@ class _ChatListItem extends StatelessWidget {
       title: Text(chat.groupName, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: const Text('Last message will appear here...'),
       trailing: const Text('Time'),
-      onTap: () {
+      onTap: () async {
         final currentUser = Provider.of<UserProvider>(context, listen: false).user;
         if (currentUser != null) {
-          Navigator.of(context).push(
+          await Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => ChatScreen(chat: chat, currentUser: currentUser),
             ),
           );
+          viewModel.fetchChats();
         }
       },
     );

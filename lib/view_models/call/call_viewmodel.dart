@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -29,7 +30,7 @@ class CallViewModel extends ChangeNotifier {
   bool _isVideoCall = true;
   User? _currentCallPartner;
   String? _callStatusMessage;
-
+  bool _isConnecting = false;
   // WebRTC Service
   WebRTCService? _webrtcService;
   bool _isInitialized = false;
@@ -63,6 +64,7 @@ class CallViewModel extends ChangeNotifier {
   String? get callStatusMessage => _callStatusMessage;
   bool get isInitialized => _isInitialized;
   WebRTCService? get webrtcService => _webrtcService;
+  bool get isConnecting => _isConnecting;
 
   Future<void> initialize(User currentUser) async {
     try {
@@ -171,22 +173,26 @@ class CallViewModel extends ChangeNotifier {
         _callRepository.sendCandidate(toUserId: int.parse(toUserId), payload: payload);
       },
       onCallEstablished: () {
-        debugPrint('[CallViewModel] Call established');
-        _callStatusMessage = 'Call connected';
+        debugPrint('[CallViewModel] Callback: Call ESTABLISHED.');
+        _isInCall = true;
+        _isConnecting = false;
+        _callStatusMessage = 'Connected';
         notifyListeners();
       },
       onCallFailed: (reason) {
-        debugPrint('[CallViewModel] Call failed: $reason');
-        _callStatusMessage = 'Call failed: $reason';
+        debugPrint('[CallViewModel] Callback: Call FAILED. Reason: $reason');
         _isInCall = false;
+        _isConnecting = false;
         _currentCallPartner = null;
+        _callStatusMessage = 'Call Failed';
         notifyListeners();
       },
-              onCallEnded: () {
-          debugPrint('[CallViewModel] Call ended');
-          _callStatusMessage = 'Call ended';
+        onCallEnded: () {
+          debugPrint('[CallViewModel] Callback: Call ENDED.');
           _isInCall = false;
+          _isConnecting = false;
           _currentCallPartner = null;
+          _callStatusMessage = 'Call Ended';
           notifyListeners();
         },
       );
@@ -332,44 +338,53 @@ class CallViewModel extends ChangeNotifier {
   }
 
   Future<void> acceptIncomingCall() async {
-    if (_incomingCallFrom != null && _incomingCallPayload != null && _webrtcService != null) {
-      debugPrint('[CallViewModel] Accepting incoming call from ${_incomingCallFrom!.displayName}');
-
-      // Stop vibration and timer
-      _stopVibration();
-      _incomingCallTimer?.cancel();
-
-      // Request permissions before accepting call
-      final permissionService = PermissionService();
-      final hasPermissions = await permissionService.requestCallPermissions();
-      
-      if (!hasPermissions) {
-        debugPrint('[CallViewModel] Call permissions not granted, declining call');
-        declineIncomingCall();
-        return;
-      }
-
-      _isIncomingCall = false;
-      _currentCallPartner = _incomingCallFrom;
-      _isInCall = true;
-      _isVideoCall = _incomingCallPayload!['callType'] == 'video';
-
-      try {
-        // Handle the incoming offer
-        await _webrtcService!.handleOffer(
-          _incomingCallFrom!.userId.toString(),
-          _incomingCallPayload!,
-        );
-      } catch (e) {
-        debugPrint('[CallViewModel] Error accepting call: $e');
-        endCall();
-        return;
-      }
-
-      _incomingCallFrom = null;
-      _incomingCallPayload = null;
-      notifyListeners();
+    // 1. تحقق من أن هناك مكالمة واردة بالفعل لمعالجتها
+    if (_incomingCallFrom == null || _incomingCallPayload == null || _webrtcService == null) {
+      debugPrint('[CallViewModel] Accept called but no incoming call is present.');
+      return;
     }
+
+    debugPrint('[CallViewModel] Accepting incoming call from ${_incomingCallFrom!.displayName}');
+
+    // 2. إيقاف الرنين (الاهتزاز والمؤقت)
+    _stopVibration();
+    _incomingCallTimer?.cancel();
+
+    // 3. طلب الصلاحيات اللازمة قبل المتابعة
+    final permissionService = PermissionService();
+    final hasPermissions = await permissionService.requestCallPermissions();
+
+    if (!hasPermissions) {
+      debugPrint('[CallViewModel] Call permissions not granted. Declining call.');
+      declineIncomingCall(); // ارفض المكالمة إذا لم يتم منح الصلاحيات
+      return;
+    }
+
+    // 4. تحديث حالة الواجهة فورًا لتعكس أننا نقوم بالاتصال
+    //    هذا هو التغيير الرئيسي: نقوم بتحديث الحالة هنا مرة واحدة فقط
+    _currentCallPartner = _incomingCallFrom;
+    _isInCall = true; // نعتبر أننا "في مكالمة" بمجرد القبول
+    _isConnecting = true; // نظهر حالة "جارٍ الاتصال"
+    _isIncomingCall = false; // إخفاء واجهة المكالمة الواردة
+    _callStatusMessage = 'Connecting...';
+
+    // قم بتنظيف متغيرات المكالمة الواردة
+    final partnerToCall = _incomingCallFrom!;
+    final payloadToHandle = _incomingCallPayload!;
+    _incomingCallFrom = null;
+    _incomingCallPayload = null;
+
+    notifyListeners(); // قم بإعلام الواجهة بالتغييرات
+
+    // 5. استدعاء WebRTCService للتعامل مع العرض (Offer)
+    //    لا نضع try-catch هنا، لأن onCallFailed سيتعامل مع أي أخطاء
+    await _webrtcService!.handleOffer(
+      partnerToCall.userId.toString(),
+      payloadToHandle,
+    );
+
+    // لا تقم بتغيير الحالة هنا. اعتمد على onCallEstablished أو onCallFailed
+    // اللذين سيتم استدعاؤهما من WebRTCService لتحديد النتيجة النهائية للاتصال.
   }
 
   void declineIncomingCall() {
@@ -386,49 +401,46 @@ class CallViewModel extends ChangeNotifier {
   }
 
   Future<void> initiateCall(User user, {bool isVideo = false}) async {
-    debugPrint('[CallViewModel] Initiating call to ${user.displayName} (video: $isVideo)');
-
-    if (!_isInitialized || _webrtcService == null) {
-      debugPrint('[CallViewModel] WebRTC service not initialized. isInitialized: $_isInitialized, webrtcService: ${_webrtcService != null}');
-      _callStatusMessage = 'Call system not ready. Please wait...';
+    if (isInCall) {
+      debugPrint('[CallViewModel] Cannot initiate new call while another is active.');
+      _callStatusMessage = 'Please end the current call first.';
       notifyListeners();
       return;
     }
 
-    // Request permissions before starting call
     final permissionService = PermissionService();
     final hasPermissions = await permissionService.requestCallPermissions();
-    
+
     if (!hasPermissions) {
-      debugPrint('[CallViewModel] Call permissions not granted');
-      _callStatusMessage = 'Camera and microphone permissions are required for calls';
+      debugPrint('[CallViewModel] Call permissions denied.');
+      _callStatusMessage = 'Camera and microphone permissions are required.';
       notifyListeners();
       return;
     }
 
-    addUserToCallList(user);
     _currentCallPartner = user;
     _isInCall = true;
+    _isConnecting = true;
     _isVideoCall = isVideo;
-
-    try {
-      await _webrtcService!.startCall(user.userId.toString(), isVideoCall: isVideo);
-    } catch (e) {
-      debugPrint('[CallViewModel] Error initiating call: $e');
-      endCall();
-      return;
-    }
-
+    _callStatusMessage = 'Calling ${user.displayName}...';
     notifyListeners();
+
+    await _webrtcService!.startCall(
+      user.userId.toString(),
+      isVideoCall: isVideo,
+    );
+
   }
 
   Future<void> endCall() async {
-    debugPrint('[CallViewModel] Ending call');
+    debugPrint('[CallViewModel] User initiated endCall.');
+
+    if (_isInCall) {
+      _isConnecting = false;
+      _callStatusMessage = 'Ending call...';
+      notifyListeners();
+    }
     await _webrtcService?.hangUp();
-    _isInCall = false;
-    _currentCallPartner = null;
-    _callStatusMessage = null;
-    notifyListeners();
   }
 
   Future<void> toggleAudio() async {
@@ -460,12 +472,43 @@ class CallViewModel extends ChangeNotifier {
     }
   }
 
+  /// Resets the entire state of the ViewModel to its initial values.
+  /// This should be called on user logout.
+  void reset() {
+    _onlineUsers = [];
+    _searchResults = [];
+    _callList = [];
+    _searchQuery = '';
+    _isSearching = false;
+    _isIncomingCall = false;
+    _incomingCallFrom = null;
+    _incomingCallPayload = null;
+    _isInCall = false;
+    _currentCallPartner = null;
+    _callStatusMessage = null;
+    _isInitialized = false;
+
+    _webrtcService?.dispose();
+    _webrtcService = null;
+
+    _incomingCallTimer?.cancel();
+    _incomingCallTimer = null;
+
+    _stopVibration();
+
+    if (kDebugMode) {
+      print('[CallViewModel] State has been reset.');
+    }
+
+
+    notifyListeners();
+  }
+
   @override
   void dispose() {
-    // Don't dispose the singleton CallViewModel here, it's managed by GetIt
     _stopVibration();
     _incomingCallTimer?.cancel();
-    _webrtcService?.dispose(); // Still dispose WebRTC resources
+    _webrtcService?.dispose();
     super.dispose();
   }
 } 

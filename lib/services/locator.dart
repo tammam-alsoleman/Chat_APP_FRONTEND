@@ -12,6 +12,11 @@ import '../view_models/call/call_viewmodel.dart';
 import '../repositories/presence_repository.dart';
 import '../repositories/call_repository.dart';
 import 'permission_service.dart';
+import 'crypto_service.dart';
+import '../repositories/group_repository.dart';
+import 'chat_security_service.dart';
+import '../view_models/chat/new_chat_viewmodel.dart';
+import '../view_models/user_provider.dart';
 
 // Create a global instance of GetIt
 final sl = GetIt.instance;
@@ -22,6 +27,7 @@ void setupServiceLocator() {
   sl.registerLazySingleton(() => SecureStorageService.instance);
   sl.registerLazySingleton(() => DioClient.instance);
   sl.registerLazySingleton(() => SocketClient.instance);
+  sl.registerLazySingleton(() => CryptoService());
 
   // --- REPOSITORIES (Singletons) ---
   // They are also created once. They depend on the core services.
@@ -39,7 +45,11 @@ void setupServiceLocator() {
   sl.registerFactory(() => AuthViewModel());
   sl.registerFactory(() => SignUpViewModel());
   sl.registerFactory(() => ChatListViewModel());
-  
+
+  sl.registerLazySingleton(() => GroupRepository());
+  sl.registerLazySingleton(() => ChatSecurityService.instance);
+
+
   // CallViewModel is a singleton (one instance for entire app lifecycle)
   sl.registerLazySingleton(() => CallViewModel(
     presenceRepository: sl<PresenceRepository>(),

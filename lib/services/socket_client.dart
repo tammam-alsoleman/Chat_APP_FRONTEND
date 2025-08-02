@@ -1,5 +1,6 @@
 // lib/core/socket_client.dart
 import 'dart:async';
+import 'package:chat_app_frontend/services/locator.dart';
 import 'package:flutter/foundation.dart'; // Required for kDebugMode
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'secure_storage_service.dart';
@@ -26,14 +27,19 @@ class SocketClient {
       return;
     }
 
-    final token = await SecureStorageService.instance.getToken();
+    if (_socket != null) {
+      disconnect();
+    }
 
-    _socket = io.io(AppConfig.instance.baseUrl,
-        io.OptionBuilder()
-            .setTransports(['websocket'])
-            .setAuth({'token': token})
-            .enableReconnection()
-            .build()
+    final token = await sl<SecureStorageService>().getToken();
+
+    _socket = io.io(
+      AppConfig.instance.baseUrl,
+      io.OptionBuilder()
+          .setTransports(['websocket'])
+          .setAuth({'token': token}) // Use the provided token
+          .enableReconnection()
+          .build(),
     );
 
     _socket!.onConnect((_) {
