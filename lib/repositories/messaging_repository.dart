@@ -39,29 +39,26 @@ class MessagingRepository {
   }
 
   /// Fetches the message history for a specific chat.
-  Future<List<Message>> getMessagesForChat(int chatId, {int? beforeMessageId}) async {
-    // ... (code from previous steps)
+  Future<List<Message>> getMessagesForChat(int chatId) async {
     try {
-      final queryParameters = <String, dynamic>{
-        'limit': 30,
-      };
-      if (beforeMessageId != null) {
-        queryParameters['beforeMessageId'] = beforeMessageId;
-      }
-      final response = await _dio.get(
-        ApiEndPoints.chatMessages(chatId),
-        queryParameters: queryParameters,
-      );
+      print("--- [Repo] Fetching messages for chatId: $chatId ---");
+      final response = await _dio.get(ApiEndPoints.chatMessages(chatId));
+
       if (response.statusCode == 200 && response.data is List) {
         final List<dynamic> messageData = response.data;
-        return messageData.map((json) => Message.fromJson(json)).toList();
+        // The .map() function iterates over the list and converts each JSON object
+        // into a Message model using our fromJson factory.
+        final messages = messageData.map((json) => Message.fromJson(json)).toList();
+        print("--- [Repo] Successfully fetched and parsed ${messages.length} messages ---");
+        return messages;
       } else {
         throw ServerException('Failed to load messages: Invalid response format.');
       }
     } on DioException catch (e) {
+      // You can add more specific error handling here if needed
       throw ServerException(e.response?.data['error'] ?? 'Failed to load messages.');
     } catch (e) {
-      throw ServerException('An unexpected error occurred: $e');
+      throw ServerException('An unexpected error occurred while fetching messages: $e');
     }
   }
 

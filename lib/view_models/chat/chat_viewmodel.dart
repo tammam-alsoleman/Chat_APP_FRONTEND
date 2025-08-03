@@ -1,5 +1,6 @@
 // lib/view_models/chat/chat_viewmodel.dart
 
+import 'package:chat_app_frontend/shared/exceptions.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/message_model.dart';
@@ -19,10 +20,6 @@ class ChatViewModel extends ChangeNotifier {
   final int chatId;
   final User currentUser;
 
-  ChatViewModel({required this.chatId, required this.currentUser}) {
-    _listenForNewMessages();
-  }
-
   ViewState _state = ViewState.Idle;
   ViewState get state => _state;
 
@@ -31,6 +28,12 @@ class ChatViewModel extends ChangeNotifier {
 
   List<Message> _messages = [];
   List<Message> get messages => _messages;
+
+  ChatViewModel({required this.chatId, required this.currentUser}) {
+    // We call the fetch method as soon as the ViewModel is created.
+    fetchInitialMessages();
+    // _listenForNewMessages(); // We will enable this later
+  }
 
   void _setState(ViewState viewState) {
     _state = viewState;
@@ -43,7 +46,27 @@ class ChatViewModel extends ChangeNotifier {
   }
 
   Future<void> fetchInitialMessages() async {
-    // ... (code from previous steps)
+    // Set the state to Busy to show a loading indicator in the UI.
+    _setState(ViewState.Busy);
+    _failure = null; // Reset any previous errors
+
+    try {
+      print("--- [ViewModel] Calling repository to fetch messages... ---");
+      // Call the repository to get the data.
+      final messageList = await _messagingRepository.getMessagesForChat(chatId);
+
+      // Update the ViewModel's state with the new data.
+      _messages = messageList;
+
+      // Set the state back to Idle to hide the loading indicator and show the list.
+      _setState(ViewState.Idle);
+      print("--- [ViewModel] Messages fetched successfully. State is now Idle. ---");
+
+    } on AppException catch (e) {
+      print("--- [ViewModel] ❌ ERROR fetching messages: $e ---");
+      // If an error occurs, convert it to a user-friendly Failure object.
+      _setFailure(ServerFailure(e.message));
+    }
   }
 
   /// Handles sending a message with optimistic UI updates.

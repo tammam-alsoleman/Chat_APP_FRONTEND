@@ -7,7 +7,6 @@ import '../../models/user_model.dart';
 import '../../models/message_model.dart';
 import '../../shared/enums.dart';
 import '../../shared/utils.dart';
-import '../../shared/widgets/loading_indicator.dart';
 import '../../view_models/chat/chat_viewmodel.dart';
 import '../../shared/widgets/message_bubble.dart'; 
 import '../../shared/widgets/message_composer.dart';
@@ -67,15 +66,6 @@ class _ChatView extends StatefulWidget {
 }
 
 class _ChatViewState extends State<_ChatView> {
-  @override
-  void initState() {
-    super.initState();
-    // Fetch initial messages when the view is first created.
-    // Using addPostFrameCallback ensures the context is ready.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ChatViewModel>().fetchInitialMessages();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,11 +95,20 @@ class _ChatViewState extends State<_ChatView> {
   }
 
   Widget _buildMessageList(ChatViewModel viewModel) {
-    AppUtils.log("[UI] Rebuilding message list. Message count: ${viewModel.messages.length}");
-
-    if (viewModel.state == ViewState.Busy && viewModel.messages.isEmpty) {
-      return const LoadingIndicator();
+  // 1. Handle the Busy state
+    if (viewModel.state == ViewState.Busy) {
+      // If we are busy, show a centered loading indicator.
+      return const Center(child: CircularProgressIndicator());
     }
+
+    // 2. Handle the Error state (optional, but good practice)
+    if (viewModel.state == ViewState.Error && viewModel.failure != null) {
+      return Center(
+        child: Text("Error: ${viewModel.failure!.message}"),
+      );
+    }
+
+    // 3. Handle the Empty state
     if (viewModel.messages.isEmpty) {
       return const Center(
         child: Text('No messages yet. Say something!'),
@@ -123,9 +122,9 @@ class _ChatViewState extends State<_ChatView> {
         final message = viewModel.messages[index];
         final isMe = message.senderId == widget.currentUser.userId;
         return MessageBubble(
-          message: message, 
+          message: message,
           isMe: isMe,
-          onRetry: message.status == MessageStatus.failed 
+          onRetry: message.status == MessageStatus.failed
             ? () => _retryMessage(context, message)
             : null,
         );
