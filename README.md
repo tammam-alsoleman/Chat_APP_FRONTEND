@@ -2,9 +2,6 @@
 
 This repository contains the frontend source code for a modern, secure, cross-platform chat application built with Flutter. The application provides end-to-end encrypted messaging, real-time presence updates, and high-quality peer-to-peer video & audio calls.
 
-![Chat App Mockup](https://via.placeholder.com/800x450.png?text=Your+App+Screenshot+Here)
-*(Suggestion: Replace the placeholder link above with a screenshot of your app)*
-
 ---
 
 ## ✨ Features
