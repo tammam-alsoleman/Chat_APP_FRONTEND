@@ -66,11 +66,9 @@ Follow these instructions to get a copy of the project up and running on your lo
 3.  **Configure the environment:**
     - Open the file `lib/core/config.dart`.
     - Update the `baseUrl` for the `development` environment to point to your local backend server's IP address and port.
+    -       baseUrl = 'http://YOUR_LOCAL_IP_ADDRESS:5000';
     ```dart
-    case Environment.development:
-      baseUrl = 'http://YOUR_LOCAL_IP_ADDRESS:5000';
-      break;
-    ```
+
 
 4.  **Run the application:**
     ```sh
