@@ -1,5 +1,6 @@
 // lib/views/chat/chat_list_screen.dart
 
+import 'package:chat_app_frontend/shared/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/locator.dart';
@@ -55,17 +56,38 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
   }
 
   Future<void> _logout(BuildContext context) async {
-    // Get the AuthRepository from our service locator to perform the logout.
-    await sl<AuthRepository>().logout(context);
+    print("--- 1. Logout process started ---");
+    try {
+      // Get the AuthRepository and UserProvider before any async gaps.
+      final authRepository = sl<AuthRepository>();
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
 
-    // Check if widget is still mounted before using context
-    if (!mounted) return;
+      // Perform all data-clearing operations first.
+      await authRepository.logout();
+      print("--- 2. authRepository.logout() completed successfully ---");
 
-    // Navigate back to the LoginScreen and remove all previous routes from the stack.
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
-    );
+      // Clear the user from the provider.
+      userProvider.clearUser();
+      print("--- 3. UserProvider cleared ---");
+
+      // THE FIX: Check if the widget is still mounted AFTER all async work
+      // and BEFORE using the context for navigation.
+      if (!mounted) return;
+
+      // Now, perform the navigation as the very last step.
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+      );
+      print("--- 4. Navigation to LoginScreen initiated ---");
+
+    } catch (e) {
+      print("--- ❌ ERROR during logout process: $e ---");
+      // Also check if mounted before showing a snackbar.
+      if (mounted) {
+        AppUtils.showSnackBar(context, "Logout failed. Please try again.", isError: true);
+      }
+    }
   }
 
   @override
