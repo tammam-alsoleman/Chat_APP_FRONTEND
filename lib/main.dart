@@ -163,7 +163,7 @@ class _AuthenticatedAppLoaderState extends State<AuthenticatedAppLoader> {
     } catch (e) {
       debugPrint('[AuthenticatedAppLoader] Error during initialization: $e');
       // If something fails (e.g., token expired), log out and go to login
-      await sl<AuthRepository>().logout(context);
+      await sl<AuthRepository>().logout();
       
       // Check if widget is still mounted before using context
       if (!mounted) return;
