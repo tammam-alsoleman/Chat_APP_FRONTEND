@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-// import 'package:vibration/vibration.dart'; // Temporarily removed
 import '../../models/user_model.dart';
 import '../../repositories/presence_repository.dart';
 import '../../repositories/call_repository.dart';
@@ -16,6 +14,8 @@ class CallViewModel extends ChangeNotifier {
   final CallRepository _callRepository;
   final UserRepository _userRepository;
   final SocketClient _socketClient;
+  User? _currentUser;
+
 
   // State variables
   List<User> _onlineUsers = [];
@@ -37,7 +37,6 @@ class CallViewModel extends ChangeNotifier {
   
   // Incoming call timer and vibration
   Timer? _incomingCallTimer;
-  bool _isVibrating = false;
 
   CallViewModel({
     required PresenceRepository presenceRepository,
@@ -50,7 +49,13 @@ class CallViewModel extends ChangeNotifier {
        _socketClient = socketClient;
 
   // Getters
-  List<User> get onlineUsers => _onlineUsers;
+  List<User> get onlineUsers {
+    if (_currentUser == null) return [];
+    final filteredList = _onlineUsers.where((user) => user.userId != _currentUser!.userId).toList();
+    // This is the FILTERED list that the UI will see
+    debugPrint('[CallViewModel] 3. Returning FILTERED onlineUsers list with ${filteredList.length} users.');
+    return filteredList;
+  }
   List<User> get searchResults => _searchResults;
   List<User> get callList => _callList;
   String get searchQuery => _searchQuery;
@@ -68,18 +73,16 @@ class CallViewModel extends ChangeNotifier {
 
   Future<void> initialize(User currentUser) async {
     try {
-      debugPrint('[CallViewModel] Starting initialization...');
+      _currentUser = currentUser;
 
       // Connect to socket
       await _socketClient.connectAndListen();
-      debugPrint('[CallViewModel] Socket connected');
 
       // Wait a bit for socket to be fully ready
       await Future.delayed(const Duration(milliseconds: 500));
 
       // Register presence
       _presenceRepository.registerPresence(currentUser);
-      debugPrint('[CallViewModel] Presence registered');
 
       // Wait a bit more for presence to be processed
       await Future.delayed(const Duration(milliseconds: 500));
@@ -91,11 +94,9 @@ class CallViewModel extends ChangeNotifier {
       _presenceRepository.listenPresenceUpdate(_onPresenceUpdate);
 
       // Listen for incoming calls
-      debugPrint('[CallViewModel] Setting up incoming call listeners...');
       _callRepository.listenOffer(onIncomingCall);
       _callRepository.listenAnswer(_onAnswer);
       _callRepository.listenCandidate(_onCandidate);
-      debugPrint('[CallViewModel] Incoming call listeners set up successfully');
 
       // Initialize WebRTC service
       _initializeWebRTCService(currentUser);
@@ -110,8 +111,8 @@ class CallViewModel extends ChangeNotifier {
   // Method to re-initialize for new user (after sign-up)
   Future<void> reinitialize(User currentUser) async {
     try {
-      debugPrint('[CallViewModel] Re-initializing for new user: ${currentUser.displayName}');
-      
+      _currentUser = currentUser;
+
       // Clear existing state
       _onlineUsers.clear();
       _searchResults.clear();
@@ -338,7 +339,6 @@ class CallViewModel extends ChangeNotifier {
   }
 
   Future<void> acceptIncomingCall() async {
-    // 1. تحقق من أن هناك مكالمة واردة بالفعل لمعالجتها
     if (_incomingCallFrom == null || _incomingCallPayload == null || _webrtcService == null) {
       debugPrint('[CallViewModel] Accept called but no incoming call is present.');
       return;
@@ -346,45 +346,36 @@ class CallViewModel extends ChangeNotifier {
 
     debugPrint('[CallViewModel] Accepting incoming call from ${_incomingCallFrom!.displayName}');
 
-    // 2. إيقاف الرنين (الاهتزاز والمؤقت)
     _stopVibration();
     _incomingCallTimer?.cancel();
 
-    // 3. طلب الصلاحيات اللازمة قبل المتابعة
     final permissionService = PermissionService();
     final hasPermissions = await permissionService.requestCallPermissions();
 
     if (!hasPermissions) {
       debugPrint('[CallViewModel] Call permissions not granted. Declining call.');
-      declineIncomingCall(); // ارفض المكالمة إذا لم يتم منح الصلاحيات
+      declineIncomingCall();
       return;
     }
 
-    // 4. تحديث حالة الواجهة فورًا لتعكس أننا نقوم بالاتصال
-    //    هذا هو التغيير الرئيسي: نقوم بتحديث الحالة هنا مرة واحدة فقط
+
     _currentCallPartner = _incomingCallFrom;
-    _isInCall = true; // نعتبر أننا "في مكالمة" بمجرد القبول
-    _isConnecting = true; // نظهر حالة "جارٍ الاتصال"
-    _isIncomingCall = false; // إخفاء واجهة المكالمة الواردة
+    _isInCall = true;
+    _isConnecting = true;
+    _isIncomingCall = false;
     _callStatusMessage = 'Connecting...';
 
-    // قم بتنظيف متغيرات المكالمة الواردة
     final partnerToCall = _incomingCallFrom!;
     final payloadToHandle = _incomingCallPayload!;
     _incomingCallFrom = null;
     _incomingCallPayload = null;
 
-    notifyListeners(); // قم بإعلام الواجهة بالتغييرات
+    notifyListeners();
 
-    // 5. استدعاء WebRTCService للتعامل مع العرض (Offer)
-    //    لا نضع try-catch هنا، لأن onCallFailed سيتعامل مع أي أخطاء
     await _webrtcService!.handleOffer(
       partnerToCall.userId.toString(),
       payloadToHandle,
     );
-
-    // لا تقم بتغيير الحالة هنا. اعتمد على onCallEstablished أو onCallFailed
-    // اللذين سيتم استدعاؤهما من WebRTCService لتحديد النتيجة النهائية للاتصال.
   }
 
   void declineIncomingCall() {
