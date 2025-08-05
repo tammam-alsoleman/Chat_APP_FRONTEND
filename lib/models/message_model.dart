@@ -44,6 +44,7 @@ class Message {
     int? messageId,
     DateTime? sentAt,
     MessageStatus? newStatus,
+    String? textMessage,
   }) {
     return Message(
       messageId: messageId ?? this.messageId,
@@ -51,7 +52,7 @@ class Message {
       senderId: this.senderId,
       senderUsername: this.senderUsername,
       sentAt: sentAt ?? this.sentAt,
-      textMessage: this.textMessage,
+      textMessage: textMessage ?? this.textMessage,
       clientMessageId: this.clientMessageId,
       status: newStatus ?? this.status,
     );

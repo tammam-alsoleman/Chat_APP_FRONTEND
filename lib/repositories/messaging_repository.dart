@@ -81,4 +81,18 @@ class MessagingRepository {
       throw NetworkException('Failed to emit message. Please check your connection.');
     }
   }
+
+  Future<String?> getMyEncryptedKey(int chatId) async {
+    try {
+      // This endpoint needs to be defined in your ApiEndPoints constants
+      final response = await _dio.get('/api/chats/$chatId/my-key');
+      if (response.statusCode == 200 && response.data['encryptedGroupKey'] != null) {
+        return response.data['encryptedGroupKey'] as String;
+      }
+      return null;
+    } on DioException {
+      // Return null if not found or if there's an error
+      return null;
+    }
+  }
 }

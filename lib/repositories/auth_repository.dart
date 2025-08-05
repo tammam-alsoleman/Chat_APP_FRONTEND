@@ -102,21 +102,13 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
-    print("--- 2a. Inside authRepository.logout() ---");
     try {
       // Disconnect the socket
       sl<SocketClient>().disconnect();
-      print("--- 2b. Socket disconnected ---");
 
       // Delete the token
       await _storageService.deleteToken();
-      print("--- 2c. Token deleted ---");
-
-      // Delete the private key
-      await _storageService.deletePrivateKey();
-      print("--- 2d. Private key deleted ---");
     } catch (e) {
-      print("--- ❌ ERROR inside authRepository.logout(): $e ---");
       // Re-throw the error so the UI layer is aware of the failure.
       throw ServerException("Failed to clear session data.");
     }

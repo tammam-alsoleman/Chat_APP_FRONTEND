@@ -19,6 +19,8 @@ class SignUpViewModel extends ChangeNotifier {
   final AuthRepository _authRepository = sl<AuthRepository>();
   final UserRepository _userRepository = sl<UserRepository>();
   final CryptoService _cryptoService = sl<CryptoService>();
+  final SecureStorageService _storageService = sl<SecureStorageService>();
+
   ViewState _state = ViewState.Idle;
   ViewState get state => _state;
 
@@ -40,6 +42,8 @@ class SignUpViewModel extends ChangeNotifier {
     _failure = null;
 
     try {
+      await _storageService.deletePrivateKey();
+
       final publicKeyPem = await _cryptoService.generateAndStoreKeyPair(); // Using your corrected CryptoService
 
       // The repository now returns the user object directly on success.
